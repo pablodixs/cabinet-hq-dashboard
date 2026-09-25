@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { apiMessage, apiMutation, apiRequest, ApiError } from "./api";
-import type { HqList, HqProfile, HqSession, MediaSearchItem, Operator } from "./contracts";
+import type { HqList, HqProfile, HqSession, MediaSearchItem, MediaType, Operator } from "./contracts";
 
 type View = "overview" | "lists" | "insights" | "profile" | "team" | "settings";
 type CatalogSource = "cabinet" | "external";
@@ -9,6 +9,7 @@ type CatalogItem = {
   mediaId: string | null;
   externalId: string | null;
   externalSource: string | null;
+  mediaType: MediaType | null;
   title: string;
   year: number;
   cover: string;
@@ -194,10 +195,11 @@ function mapProfile(profile: HqProfile): Profile {
   return { id: profile.id, name: profile.displayName, handle: profile.handle, bio: profile.bio ?? "", website: profile.hq?.websiteUrl ?? "", avatar: profile.avatarUrl ?? "", backdrop: profile.backdropUrl ?? art.hero, accent: "#c6f36a", followers: profile.followers, verified: profile.verified, claimStatus: profile.hq?.claimStatus ?? "UNKNOWN" };
 }
 function mapList(list: HqList): Collection {
-  return { id: list.id, ordered: list.ordered, editorIds: list.editorIds, title: list.name, description: list.description ?? "", richText: richDocumentToHtml(list.richDescription), backdrop: list.coverUrl ?? art.hero, visibility: list.visibility === "PUBLIC" ? "Pública" : "Privada", items: list.items.map((entry) => ({ id: entry.id, item: { id: entry.mediaId, mediaId: entry.mediaId, externalId: null, externalSource: null, title: entry.title, year: 0, cover: entry.coverUrl ?? "", type: "Obra do catálogo Cabinet", source: "cabinet", publisher: "Cabinet" }, note: entry.notes ?? "" })), updatedAt: list.updatedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(list.updatedAt)) : "—" };
+  return { id: list.id, ordered: list.ordered, editorIds: list.editorIds, title: list.name, description: list.description ?? "", richText: richDocumentToHtml(list.richDescription), backdrop: list.coverUrl ?? art.hero, visibility: list.visibility === "PUBLIC" ? "Pública" : "Privada", items: list.items.map((entry) => ({ id: entry.id, item: { id: entry.mediaId, mediaId: entry.mediaId, externalId: null, externalSource: null, mediaType: null, title: entry.title, year: 0, cover: entry.coverUrl ?? "", type: "Obra do catálogo Cabinet", source: "cabinet", publisher: "Cabinet" }, note: entry.notes ?? "" })), updatedAt: list.updatedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(list.updatedAt)) : "—" };
 }
 function mapSearchResult(item: MediaSearchItem): CatalogItem {
-  return { id: item.id ?? `${item.source ?? "external"}:${item.externalId ?? item.title}`, mediaId: item.id, externalId: item.externalId, externalSource: item.source, title: item.title, year: item.releaseDate ? Number(item.releaseDate.slice(0, 4)) : 0, cover: item.coverUrl ?? "", type: item.type, source: item.source ? "external" : "cabinet", publisher: item.creator ?? (item.source ?? "Cabinet") };
+  const typeLabels: Record<MediaType, string> = { BOOK: "Livro / HQ", MOVIE: "Filme", SERIES: "Série", TRACK: "Faixa", ALBUM: "Álbum", EPISODE: "Episódio" };
+  return { id: item.id ?? `${item.source ?? "external"}:${item.externalId ?? item.title}`, mediaId: item.id, externalId: item.externalId, externalSource: item.source, mediaType: item.type, title: item.title, year: item.releaseDate ? Number(item.releaseDate.slice(0, 4)) : 0, cover: item.coverUrl ?? "", type: typeLabels[item.type], source: item.source ? "external" : "cabinet", publisher: item.creator ?? (item.source ?? "Cabinet") };
 }
 const emptyData: AppData = { profile: { id: "", name: "", handle: "", bio: "", website: "", avatar: "", backdrop: art.hero, accent: "#c6f36a", followers: 0, verified: false, claimStatus: "UNKNOWN" }, lists: [] };
 async function fetchDashboard(session: HqSession) {
@@ -350,7 +352,7 @@ function App() {
       setSearchError("");
       try {
         const page = await apiRequest<{ items: MediaSearchItem[]; nextCursor: string | null }>(
-          `/v1/media/search?query=${encodeURIComponent(normalized)}&type=BOOK&limit=30`,
+          `/v1/media/search?query=${encodeURIComponent(normalized)}&limit=30`,
           { signal: controller.signal },
         );
         setSearchResults(page.items);
@@ -464,7 +466,7 @@ function App() {
       if (!mediaId && item.externalId && item.externalSource) {
         const imported = await apiMutation<{ id: string }>("/v1/media/external/import", {
           method: "POST",
-          body: JSON.stringify({ source: item.externalSource, externalId: item.externalId, mediaType: "BOOK" }),
+          body: JSON.stringify({ source: item.externalSource, externalId: item.externalId, mediaType: item.mediaType }),
         });
         mediaId = imported.id;
       }

@@ -1,4 +1,5 @@
 export type HqRole = "OWNER" | "ADMIN" | "EDITOR" | "ANALYST";
+export type MediaType = "BOOK" | "MOVIE" | "SERIES" | "TRACK" | "ALBUM" | "EPISODE";
 export type HqSession = {
   operatorId: string;
   profileId: string;
@@ -43,7 +44,7 @@ export type MediaSearchItem = {
   id: string | null;
   externalId: string | null;
   source: string | null;
-  type: string;
+  type: MediaType;
   title: string;
   creator: string | null;
   description: string | null;
