@@ -1465,6 +1465,84 @@ p {
   position: absolute;
   opacity: 0;
 }
+.media-backdrop-picker {
+  margin-top: 10px;
+}
+.backdrop-search {
+  width: 100%;
+}
+.backdrop-media-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  max-height: 300px;
+  margin-top: 9px;
+  overflow-y: auto;
+}
+.backdrop-media-option {
+  min-width: 0;
+  min-height: 65px;
+  display: grid;
+  grid-template-columns: 39px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #333f35;
+  border-radius: 4px;
+  background: #111812;
+  color: #e8eee7;
+  text-align: left;
+}
+.backdrop-media-option:hover,
+.backdrop-media-option.chosen {
+  border-color: var(--acid);
+}
+.backdrop-media-option img {
+  width: 39px;
+  height: 51px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #273129;
+}
+.backdrop-media-option span,
+.backdrop-picked-row span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.backdrop-media-option strong,
+.backdrop-picked-row strong {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.backdrop-media-option small,
+.backdrop-picked-row small {
+  overflow: hidden;
+  color: #929d92;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.backdrop-picked-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 7px;
+  border: 1px solid #333f35;
+  border-radius: 4px;
+  background: #111812;
+}
+.backdrop-picked-preview {
+  width: 36px;
+  height: 46px;
+  border-radius: 2px;
+  background: #273129 center / cover;
+}
 .backdrop-preview {
   height: 108px;
   display: flex;
@@ -2430,6 +2508,9 @@ p {
   }
   .backdrop-options {
     gap: 5px;
+  }
+  .backdrop-media-grid {
+    grid-template-columns: 1fr;
   }
   .insight-card {
     display: block;

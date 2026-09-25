@@ -45,22 +45,6 @@ type Profile = {
 };
 type AppData = { profile: Profile; lists: Collection[] };
 
-const art = {
-  hero: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=1800&q=85",
-  hero2:
-    "https://images.unsplash.com/photo-1601645191163-3fc0d5d64e35?auto=format&fit=crop&w=1800&q=85",
-  hero3:
-    "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=1800&q=85",
-  hero4:
-    "https://images.unsplash.com/photo-1614583225154-5fcdda07019e?auto=format&fit=crop&w=1800&q=85",
-  covers: [
-    "https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&w=1800&q=85",
-    "https://images.unsplash.com/photo-1601645191163-3fc0d5d64e35?auto=format&fit=crop&w=700&q=80",
-    "https://images.unsplash.com/photo-1612036782180-6f0b6cd846fe?auto=format&fit=crop&w=700&q=80",
-    "https://images.unsplash.com/photo-1614583225154-5fcdda07019e?auto=format&fit=crop&w=700&q=80",
-    "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=700&q=80",
-  ],
-};
 function Icon({ name, size = 19 }: { name: string; size?: number }) {
   const paths: Record<string, string> = {
     grid: "M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z",
@@ -110,6 +94,9 @@ function initialName(name: string) {
 }
 function formatNumber(value: number) {
   return new Intl.NumberFormat("pt-BR").format(value);
+}
+function backdropBackground(url: string, overlay: string) {
+  return url ? `${overlay}, url("${url.replaceAll('"', "%22")}")` : overlay;
 }
 const todayLabel = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
@@ -192,16 +179,16 @@ function richHtmlToDocument(html: string) {
   return JSON.stringify({ version: 1, blocks });
 }
 function mapProfile(profile: HqProfile): Profile {
-  return { id: profile.id, name: profile.displayName, handle: profile.handle, bio: profile.bio ?? "", website: profile.hq?.websiteUrl ?? "", avatar: profile.avatarUrl ?? "", backdrop: profile.backdropUrl ?? art.hero, accent: "#c6f36a", followers: profile.followers, verified: profile.verified, claimStatus: profile.hq?.claimStatus ?? "UNKNOWN" };
+  return { id: profile.id, name: profile.displayName, handle: profile.handle, bio: profile.bio ?? "", website: profile.hq?.websiteUrl ?? "", avatar: profile.avatarUrl ?? "", backdrop: profile.backdropUrl ?? "", accent: "#c6f36a", followers: profile.followers, verified: profile.verified, claimStatus: profile.hq?.claimStatus ?? "UNKNOWN" };
 }
 function mapList(list: HqList): Collection {
-  return { id: list.id, ordered: list.ordered, editorIds: list.editorIds, title: list.name, description: list.description ?? "", richText: richDocumentToHtml(list.richDescription), backdrop: list.coverUrl ?? art.hero, visibility: list.visibility === "PUBLIC" ? "Pública" : "Privada", items: list.items.map((entry) => ({ id: entry.id, item: { id: entry.mediaId, mediaId: entry.mediaId, externalId: null, externalSource: null, mediaType: null, title: entry.title, year: 0, cover: entry.coverUrl ?? "", type: "Obra do catálogo Cabinet", source: "cabinet", publisher: "Cabinet" }, note: entry.notes ?? "" })), updatedAt: list.updatedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(list.updatedAt)) : "—" };
+  return { id: list.id, ordered: list.ordered, editorIds: list.editorIds, title: list.name, description: list.description ?? "", richText: richDocumentToHtml(list.richDescription), backdrop: list.coverUrl ?? "", visibility: list.visibility === "PUBLIC" ? "Pública" : "Privada", items: list.items.map((entry) => ({ id: entry.id, item: { id: entry.mediaId, mediaId: entry.mediaId, externalId: null, externalSource: null, mediaType: null, title: entry.title, year: 0, cover: entry.coverUrl ?? "", type: "Obra do catálogo Cabinet", source: "cabinet", publisher: "Cabinet" }, note: entry.notes ?? "" })), updatedAt: list.updatedAt ? new Intl.DateTimeFormat("pt-BR", { dateStyle: "medium" }).format(new Date(list.updatedAt)) : "—" };
 }
 function mapSearchResult(item: MediaSearchItem): CatalogItem {
   const typeLabels: Record<MediaType, string> = { BOOK: "Livro / HQ", MOVIE: "Filme", SERIES: "Série", TRACK: "Faixa", ALBUM: "Álbum", EPISODE: "Episódio" };
   return { id: item.id ?? `${item.source ?? "external"}:${item.externalId ?? item.title}`, mediaId: item.id, externalId: item.externalId, externalSource: item.source, mediaType: item.type, title: item.title, year: item.releaseDate ? Number(item.releaseDate.slice(0, 4)) : 0, cover: item.coverUrl ?? "", type: typeLabels[item.type], source: item.source ? "external" : "cabinet", publisher: item.creator ?? (item.source ?? "Cabinet") };
 }
-const emptyData: AppData = { profile: { id: "", name: "", handle: "", bio: "", website: "", avatar: "", backdrop: art.hero, accent: "#c6f36a", followers: 0, verified: false, claimStatus: "UNKNOWN" }, lists: [] };
+const emptyData: AppData = { profile: { id: "", name: "", handle: "", bio: "", website: "", avatar: "", backdrop: "", accent: "#c6f36a", followers: 0, verified: false, claimStatus: "UNKNOWN" }, lists: [] };
 async function fetchDashboard(session: HqSession) {
   const [profile, lists, operators] = await Promise.all([
     apiRequest<HqProfile>("/v1/hq-console/profile"),
@@ -279,6 +266,58 @@ function RichTextEditor({
       />
     </div>
   );
+}
+function MediaBackdropPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<MediaSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedTitle, setSelectedTitle] = useState("");
+  useEffect(() => {
+    const normalized = query.trim();
+    if (normalized.length < 3) {
+      setItems([]);
+      setError("");
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const page = await apiRequest<{ items: MediaSearchItem[]; nextCursor: string | null }>(
+          `/v1/media/search?query=${encodeURIComponent(normalized)}&limit=30`,
+          { signal: controller.signal },
+        );
+        setItems(page.items.filter((item) => Boolean(item.coverUrl)));
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(apiMessage(cause));
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [query]);
+  return <div className="media-backdrop-picker">
+    <div className="search-box backdrop-search"><Icon name="search" size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar obra no catálogo…" aria-label="Buscar mídia para o backdrop" /></div>
+    <p className="field-hint">Escolha a imagem de capa de uma obra do catálogo Cabinet ou externo.</p>
+    <div className="backdrop-media-grid" aria-live="polite">
+      {loading && <p className="no-results">Buscando mídias…</p>}
+      {error && <p className="no-results">{error}</p>}
+      {!loading && query.trim().length < 3 && <p className="no-results">Digite ao menos 3 caracteres para buscar mídias.</p>}
+      {!loading && query.trim().length >= 3 && !error && items.length === 0 && <p className="no-results">Nenhuma mídia com imagem encontrada.</p>}
+      {items.map((item) => {
+        const selected = item.coverUrl === value;
+        return <button type="button" key={item.id ?? `${item.source}:${item.externalId ?? item.title}`} className={`backdrop-media-option ${selected ? "chosen" : ""}`} aria-pressed={selected} onClick={() => { onChange(item.coverUrl ?? ""); setSelectedTitle(item.title); }}>
+          <img src={item.coverUrl ?? ""} alt="" />
+          <span><strong>{item.title}</strong><small>{item.creator || item.type}{item.releaseDate ? ` · ${item.releaseDate.slice(0, 4)}` : ""}</small></span>
+          {selected && <Icon name="check" size={16} />}
+        </button>;
+      })}
+    </div>
+    {value && <div className="backdrop-picked-row"><div className="backdrop-picked-preview" style={{ backgroundImage: `url("${value.replaceAll('"', "%22")}")` }} /><span><strong>{selectedTitle || "Backdrop selecionado"}</strong><small>Imagem da mídia escolhida</small></span><button type="button" className="text-link" onClick={() => { onChange(""); setSelectedTitle(""); }}>Remover</button></div>}
+  </div>;
 }
 function LoginScreen({ onSubmit, busy, error }: { onSubmit: (event: FormEvent<HTMLFormElement>) => void; busy: boolean; error: string }) {
   return <div className="login-screen"><form className="login-card" onSubmit={onSubmit}>
@@ -404,7 +443,7 @@ function App() {
           bio: String(form.get("bio")).trim(),
           websiteUrl: String(form.get("website")).trim(),
           avatarUrl: String(form.get("avatar")).trim(),
-          backdropUrl: String(form.get("backdrop")).trim(),
+          backdropUrl: String(form.get("backdrop")).trim() || null,
         }),
       });
       setData((current) => ({ ...current, profile: mapProfile(profile) }));
@@ -426,7 +465,7 @@ function App() {
           richDescription: richHtmlToDocument(String(form.get("richText") || "")),
           visibility: form.get("visibility") === "Privada" ? "PRIVATE" : "PUBLIC",
           ordered: true,
-          coverUrl: String(form.get("backdrop")) || art.hero,
+          coverUrl: String(form.get("backdrop")) || null,
         }),
       });
       setData((current) => ({ ...current, lists: [mapList(list), ...current.lists] }));
@@ -450,7 +489,7 @@ function App() {
           richDescription: richHtmlToDocument(payload.richText ?? list.richText),
           visibility: (payload.visibility ?? list.visibility) === "Privada" ? "PRIVATE" : "PUBLIC",
           ordered: payload.ordered ?? list.ordered,
-          coverUrl: payload.backdrop ?? list.backdrop,
+          coverUrl: (payload.backdrop ?? list.backdrop).trim() || null,
         }),
       });
       setData((current) => ({ ...current, lists: current.lists.map((item) => item.id === id ? mapList(updated) : item) }));
@@ -695,7 +734,7 @@ function App() {
               <section
                 className="hero-card"
                 style={{
-                  backgroundImage: `linear-gradient(90deg, rgba(10,15,12,.91) 0%, rgba(10,15,12,.65) 46%, rgba(10,15,12,.1) 100%), url(${data.profile.backdrop})`,
+                  backgroundImage: backdropBackground(data.profile.backdrop, "linear-gradient(90deg, rgba(10,15,12,.91) 0%, rgba(10,15,12,.65) 46%, rgba(10,15,12,.1) 100%)"),
                 }}
               >
                 <div className="hero-content">
@@ -980,7 +1019,7 @@ function CollectionCard({
       <div
         className="collection-cover"
         style={{
-          backgroundImage: `linear-gradient(0deg,rgba(7,10,8,.82),rgba(7,10,8,0) 65%),url(${list.backdrop})`,
+          backgroundImage: backdropBackground(list.backdrop, "linear-gradient(0deg,rgba(7,10,8,.82),rgba(7,10,8,0) 65%)"),
         }}
       >
         <span
@@ -1085,7 +1124,7 @@ function ListEditor({
       <section
         className="list-hero"
         style={{
-          backgroundImage: `linear-gradient(90deg,rgba(10,14,11,.92),rgba(10,14,11,.34)),url(${list.backdrop})`,
+          backgroundImage: backdropBackground(list.backdrop, "linear-gradient(90deg,rgba(10,14,11,.92),rgba(10,14,11,.34))"),
         }}
       >
         <div className="list-hero-inner">
@@ -1384,23 +1423,11 @@ function ListDetails({
         <div className="eyebrow">IMAGEM DE CAPA</div>
         <h2>Escolha um clima</h2>
         <p className="form-help">A capa dá o tom da sua seleção.</p>
-        <div className="backdrop-options">
-          {art.covers.map((url, index) => (
-            <button
-              key={url}
-              aria-label={`Selecionar capa ${index + 1}`}
-              className={backdrop === url ? "chosen" : ""}
-              onClick={() => setBackdrop(url)}
-              style={{ backgroundImage: `url(${url})` }}
-            >
-              {backdrop === url && <Icon name="check" size={17} />}
-            </button>
-          ))}
-        </div>
+        <MediaBackdropPicker value={backdrop} onChange={setBackdrop} />
         <div
           className="backdrop-preview"
           style={{
-            backgroundImage: `linear-gradient(0deg,rgba(0,0,0,.7),transparent),url(${backdrop})`,
+            backgroundImage: backdropBackground(backdrop, "linear-gradient(0deg,rgba(0,0,0,.7),transparent)"),
           }}
         >
           <span>PRÉVIA DA CAPA</span>
@@ -1496,7 +1523,7 @@ function ProfilePage({
       <section
         className="public-preview"
         style={{
-          backgroundImage: `linear-gradient(90deg,rgba(10,14,11,.91),rgba(10,14,11,.15)),url(${profile.backdrop})`,
+          backgroundImage: backdropBackground(profile.backdrop, "linear-gradient(90deg,rgba(10,14,11,.91),rgba(10,14,11,.15))"),
         }}
       >
         <div className="preview-content">
@@ -1651,6 +1678,7 @@ function ProfileModal({
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const [backdrop, setBackdrop] = useState(profile.backdrop);
   return (
     <Modal
       title="Personalizar perfil"
@@ -1713,26 +1741,10 @@ function ProfileModal({
         <div className="field-label">
           Imagem de capa
           <span className="field-hint">
-            Escolha uma imagem para a página pública.
+            Busque uma mídia no catálogo e use sua imagem na página pública.
           </span>
-          <div className="backdrop-options modal-backdrops">
-            {art.covers.map((url, index) => (
-              <label
-                key={url}
-                className={profile.backdrop === url ? "chosen" : ""}
-                style={{ backgroundImage: `url(${url})` }}
-                title={`Capa ${index + 1}`}
-              >
-                <input
-                  type="radio"
-                  name="backdrop"
-                  value={url}
-                  defaultChecked={profile.backdrop === url}
-                />
-                {profile.backdrop === url && <Icon name="check" size={16} />}
-              </label>
-            ))}
-          </div>
+          <input type="hidden" name="backdrop" value={backdrop} />
+          <MediaBackdropPicker value={backdrop} onChange={setBackdrop} />
         </div>
         <div className="modal-actions">
           <button
@@ -1755,7 +1767,7 @@ function NewListModal({
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
-  const [backdrop, setBackdrop] = useState(art.hero2);
+  const [backdrop, setBackdrop] = useState("");
   const [richText, setRichText] = useState("");
   return (
     <Modal
@@ -1797,20 +1809,7 @@ function NewListModal({
         <input type="hidden" name="backdrop" value={backdrop} />
         <div className="field-label">
           Escolha uma capa
-          <div className="backdrop-options modal-backdrops">
-            {art.covers.map((url, index) => (
-              <button
-                key={url}
-                type="button"
-                aria-label={`Selecionar capa ${index + 1}`}
-                className={backdrop === url ? "chosen" : ""}
-                onClick={() => setBackdrop(url)}
-                style={{ backgroundImage: `url(${url})` }}
-              >
-                {backdrop === url && <Icon name="check" size={16} />}
-              </button>
-            ))}
-          </div>
+          <MediaBackdropPicker value={backdrop} onChange={setBackdrop} />
         </div>
         <label className="field-label">
           Visibilidade
