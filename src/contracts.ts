@@ -1,0 +1,56 @@
+export type HqRole = "OWNER" | "ADMIN" | "EDITOR" | "ANALYST";
+export type HqSession = {
+  operatorId: string;
+  profileId: string;
+  hqId: string;
+  email: string;
+  displayName: string;
+  role: HqRole;
+};
+export type Operator = { id: string; email: string; displayName: string; role: HqRole; active: boolean };
+export type HqProfile = {
+  id: string;
+  type: "MEMBER" | "HQ";
+  handle: string;
+  displayName: string;
+  avatarUrl: string | null;
+  backdropUrl: string | null;
+  bio: string | null;
+  verified: boolean;
+  followers: number;
+  following: number;
+  hq: { id: string; type: string; websiteUrl: string | null; countryCode: string | null; claimStatus: string } | null;
+  navigation: string[];
+  catalogSections: string[];
+  viewer: { following: boolean; canManage: boolean; canClaim: boolean };
+  richBio?: unknown;
+};
+export type HqListItem = { id: string; mediaId: string; title: string; coverUrl: string | null; position: number; notes: string | null };
+export type HqList = {
+  id: string;
+  name: string;
+  description: string | null;
+  richDescription: string | null;
+  visibility: "PUBLIC" | "PRIVATE";
+  ordered: boolean;
+  coverUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  editorIds: string[];
+  items: HqListItem[];
+};
+export type MediaSearchItem = {
+  id: string | null;
+  externalId: string | null;
+  source: string | null;
+  type: string;
+  title: string;
+  creator: string | null;
+  description: string | null;
+  coverUrl: string | null;
+  releaseDate: string | null;
+  imported: boolean;
+  averageRating: number | null;
+  ratingCount: number;
+};
+export type MediaSearchPage = { items: MediaSearchItem[]; nextCursor: string | null };
